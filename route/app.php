@@ -10,8 +10,7 @@
 // +----------------------------------------------------------------------
 use think\facade\Route;
 
-Route::get('think', function () {
-    return 'hello,ThinkPHP6!';
+Route::group('user',function(){
+    Route::get('/login', 'home.user/login');
+    Route::get('/verify', 'home.user/verify');
 });
-
-Route::get('hello/:name', 'index/hello');
