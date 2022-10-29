@@ -1,17 +1,11 @@
 <?php
-/*
- * @Author: yangpengwang 2254240747@qq.com
- * @Date: 2022-10-28 14:34:32
- * @LastEditors: yangpengwang 2254240747@qq.com
- * @LastEditTime: 2022-10-29 18:12:41
- * @FilePath: \tp\app\controller\home\User.php
- * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
- */
+
 namespace app\controller\home;
 
 use app\BaseController;
 use think\Request;
-use think\captcha\facade\Captcha;
+use \Firebase\JWT\JWT;
+use app\model\User as tableUser;
 
 
 class User extends BaseController
@@ -19,7 +13,31 @@ class User extends BaseController
     //登录验证
     public function login(Request $request){
         $data = $request->param();
-        var_dump($data);
+       
+        //查找是否有该用户
+        if($data['username'] == ''){
+            return json(['message'=>'请输入用户名','httpcode'=>422]);
+        }
+
+        // 数据库中查询该用户
+        $user =  tableUser::where('user_name',$data['username'])->find();
+        
+        
+        if($user){
+            //如果有该用户
+            //验证是否输入密码
+            if($data['password'] == ''){
+                return json(['message'=>'请输入密码','httpcode'=>422]);
+            }
+            //验证密码是否正确
+            if($data['password'] == $user['user_pass']){
+                $token = $this->setToken($user['id']);
+                return json(['message'=>'验证成功','token'=>$token,'httpcode'=>200]);
+            }else{
+                return json(['message'=>'密码错误','httpcode'=>422]);
+            }
+        }
+      
     }
     
 
@@ -27,11 +45,29 @@ class User extends BaseController
         $data = $request->param();
         var_dump($data);
     }
-    
-    //验证码
-    public function verify()
-    {
-        return Captcha::create();    
+
+
+    /**
+     * @生成token
+     * @param {*} $id
+     * @return token
+     */
+    function setToken($password) {
+        $key = "aslfjhasgjgja";
+        $token=array(
+            "iss"=>$key,        //签发者 可以为空
+            "aud"=>'',          //面象的用户，可以为空
+            "iat"=>time(),      //签发时间
+            "nbf"=>time(),    //在什么时候jwt开始生效  （这里表示签发后立即生效）
+            "exp"=> time()+1*60*60*48, //token 过期时间1秒*60*60*48=两天
+            "data"=>[           //加入password，后期同样使用password进行比对
+                'password'=>$password,
+            ]
+        );
+        
+        $jwt = JWT::encode($token, $key, "HS256");  //根据参数生成了 token
+        return $jwt;
     }
-    
+
+
 }
