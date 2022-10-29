@@ -11,6 +11,7 @@
 use think\facade\Route;
 
 Route::group('user',function(){
-    Route::get('/login', 'home.user/login');
+    Route::post('/login', 'home.user/login');
+    Route::get('/register', 'home.user/register');
     Route::get('/verify', 'home.user/verify');
 });
