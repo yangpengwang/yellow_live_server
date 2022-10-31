@@ -20,7 +20,6 @@ function setToken($data) {
         "data"=>[ 
             'id'=>$data['id'],
             'name' => $data['name'],
-            'code' => 200,
         ]
     );
     $keyId = "keyId";

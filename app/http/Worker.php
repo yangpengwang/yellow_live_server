@@ -12,7 +12,6 @@ class Worker extends Server
     protected $socket = "websocket://0.0.0.0:2345";
     protected static $heartbeat_time = 55;
 
-
     //设置定时器 定时监听心跳
     public function onWorkerStart($worker){
         Timer::add(10, function()use($worker){
@@ -27,7 +26,7 @@ class Worker extends Server
                 if ($time_now - $connection->lastMessageTime > self::$heartbeat_time) {
                     $connection->close();
                 }
-                
+
             }
         });
     }
@@ -45,7 +44,9 @@ class Worker extends Server
             /* 保存uid到connection的映射，这样可以方便的通过uid查找connection，
             * 实现针对特定uid推送数据
             */
+            //将uid存入该房间里
             $this->worker->uidConnections[$arr->roomId][$connection->uid] = $connection;
+            //通知所有人该人已经进入直播间
             $users = $this->worker->uidConnections[$arr->roomId];
             foreach($users as $conn){
                 $conn->send($data);
@@ -57,6 +58,7 @@ class Worker extends Server
             //获取房间内的用户
             $users = $this->worker->uidConnections[$arr->roomId];
             foreach($users as $conn){
+                //发送给该房间内的所有人
                 $conn->send($data);
             }
         }
