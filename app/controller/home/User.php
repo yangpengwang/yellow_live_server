@@ -48,7 +48,7 @@ class User extends BaseController
       
     }
     
-
+    //用户注册
     public function register(Request $request){
         $data = $request->param();
        
@@ -84,6 +84,11 @@ class User extends BaseController
                 return json(['message'=>'密码错误','httpcode'=>422]);
             }
         }
+    }
+
+
+    public function applyLive(){
+        
     }
 
 }
