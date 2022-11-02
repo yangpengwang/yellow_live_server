@@ -87,8 +87,14 @@ class User extends BaseController
     }
 
 
-    public function applyLive(){
-        
+    public function applyLive(Request $request){
+        $data = $request->param();
+        var_dump($data);
+    }
+
+    public function editUser(Request $request){
+        $data = $request->param();
+        var_dump($data);
     }
 
 }
