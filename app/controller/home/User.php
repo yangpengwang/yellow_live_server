@@ -28,7 +28,7 @@ class User extends BaseController
 
         // 数据库中查询该用户
         $user =  tableUser::where('user_name',$data['username'])->find();
-        
+       
         if($user){
             //如果有该用户
             //验证是否输入密码
@@ -36,7 +36,7 @@ class User extends BaseController
                 return json(['message'=>'请输入密码','httpcode'=>422]);
             }
             //验证密码是否正确
-            if(md5($data['password']) == md5($user['user_pass'])){
+            if(md5($data['password']) == $user['user_pass']){
                 $token = setToken($user);
                 return json(['message'=>'登录成功','token'=>$token,'httpcode'=>200]);
             }else{

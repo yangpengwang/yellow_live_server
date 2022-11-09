@@ -36,7 +36,6 @@ class Worker extends Server
          // 给connection临时设置一个lastMessageTime属性，用来记录上次收到消息的时间
         $connection->lastMessageTime = time();
         $arr = json_decode($data);
-
         //表示绑定
         if($arr->type == 'bind' && $arr->roomId){
             // 没验证的话把第一个包当做uid（这里为了方便演示，没做真正的验证）
@@ -45,6 +44,7 @@ class Worker extends Server
             * 实现针对特定uid推送数据
             */
             //将uid存入该房间里
+            
             $this->worker->uidConnections[$arr->roomId][$connection->uid] = $connection;
             //通知所有人该人已经进入直播间
             $users = $this->worker->uidConnections[$arr->roomId];
