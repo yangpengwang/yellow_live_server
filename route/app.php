@@ -12,16 +12,36 @@ use think\facade\Route;
 
 
 //前端登录注册
-Route::group('user',function(){
+Route::group('login',function(){
     //登录
-    Route::post('/login', 'home.user/login');
+    Route::post('/login', 'home.login/login');
     //注册
-    Route::post('/register', 'home.user/register');
+    Route::post('/register', 'home.login/register');
     //验证码
-    Route::get('/verify', 'home.user/verify');
+    Route::get('/verify', 'home.login/verify');
     //是否登录
-    Route::get('/islogin','home.user/islogin');
+    Route::get('/islogin','home.login/islogin');
 });
+
+Route::group('user',function(){
+    //申请直播
+    Route::post('/applyLive','home.user/applyLive');
+    //修改用户名称
+    Route::post('/editUser','home.user/editUser');
+    //修改用户头像
+    Route::post('/editUserImg','home.user/editUserImg');
+    //用户开启直播
+    Route::post('/switchLive','home.user/switchLive');
+    //是否开启直播
+    Route::post('/isLive','home.user/isLive');
+
+});
+
+Route::group('live',function(){
+    //获取正在直播或录播的用户
+    Route::post('/getLiveUser','home.live/getLiveUser');
+});
+
 
 
 

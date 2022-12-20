@@ -2,99 +2,127 @@
 
 namespace app\controller\home;
 
-use app\BaseController;
+use app\controller\layout\Layout;
 use think\Request;
 use app\model\User as tableUser;
+use app\model\Live as tableLive;
+use app\Common\AliOss\AliOss;
 
 
-class User extends BaseController
+
+class User extends Layout
 {
-    public function islogin(){
-        //验签token值 返回存里面的数据
-        $data = checkToken();
-        $res = ['user'=>$data->data,'code'=>'200'];
-        return $res;
-    }
 
-    
-    //登录验证
-    public function login(Request $request){
-        $data = $request->param();
-
-        //查找是否有该用户
-        if($data['username'] == ''){
-            return json(['message'=>'请输入用户名','httpcode'=>422]);
-        }
-
-        // 数据库中查询该用户
-        $user =  tableUser::where('user_name',$data['username'])->find();
-       
-        if($user){
-            //如果有该用户
-            //验证是否输入密码
-            if($data['password'] == ''){
-                return json(['message'=>'请输入密码','httpcode'=>422]);
-            }
-            //验证密码是否正确
-            if(md5($data['password']) == $user['user_pass']){
-                $token = setToken($user);
-                return json(['message'=>'登录成功','token'=>$token,'httpcode'=>200]);
-            }else{
-                return json(['message'=>'密码错误','httpcode'=>422]);
-            }
-        }else{
-            return json(['message'=>'账号密码错误','httpcode'=>422]);
-        }
-      
-    }
-    
-    //用户注册
-    public function register(Request $request){
-        $data = $request->param();
-       
-        //查找是否有该用户
-        if($data['username'] == ''){
-            return json(['message'=>'请输入用户名','httpcode'=>422]);
-        }
-        
-        // 数据库中查询该用户
-        $user =  tableUser::where('user_name',$data['username'])->find();
-        
-        if($user){
-            return json(['message'=>'该账号已被注册','httpcode'=>422]);
-        }else{
-            if($data['password'] == ''){
-                return json(['message'=>'请输入密码','httpcode'=>422]);
-            }
-            if($data['repassword'] == ''){
-                return json(['message'=>'请输入确认密码','httpcode'=>422]);
-            }
-            
-             //验证密码与确认密码是否相同
-             if($data['password'] == $data['repassword']){
-                $newUser = tableUser::create([
-                    'user_name' => $data['username'],
-                    'user_pass' => md5($data['password']),
-                    'name'      => '游客'.time()
-                ]);
-                $tokenData = ['id'=>$newUser->id,'','name'=>$newUser->name];
-                $token = setToken($tokenData);
-                return json(['message'=>'注册并登录成功','token'=>$token,'httpcode'=>200]);
-            }else{
-                return json(['message'=>'密码错误','httpcode'=>422]);
-            }
-        }
-    }
-
-
+    //申请直播
     public function applyLive(Request $request){
+        //获取申请人的信息
         $data = $request->param();
-        var_dump($data);
+
+        //验证姓名和身份证
+        if(strlen(trim($data['idCard'])) == 18){
+
+            //申请开播 改变状态
+            $tableUser = new tableUser();
+            $user = $tableUser->where('id',$data['id'])->find();
+            $user->is_live = 1;
+            $user->save();
+            //添加到直播表里
+            $roomId = uniqid($user->id,true);
+            $addr = makeHlsAddr($roomId);
+            tableLive::create(array(
+                'live_title'    =>  $user->name.'的直播间',
+                'live_img'      =>  makeGravatar($user->user_name),
+                'live_roomId'   =>  $roomId,
+                'hls_addr'      =>  $addr,
+                'user_id'       =>  $user->id
+            ));
+            return reponseMsg('申请直播间成功','200');
+        }else{
+            return reponseMsg('身份证信息错误','422');
+        }
     }
 
-    public function editUser(Request $request){
+    //修改用户信息
+    public function editUser(Request $request)
+    {
         $data = $request->param();
-        var_dump($data);
+        $tableUser = tableUser::find($data['id']);
+        $user = $tableUser->allowField(['name'])->save(['name'=>$data['name']]);
+        if($user){
+            return reponseMsg('修改用户信息成功','200');
+        }else{
+            return reponseMsg('修改用户信息失败','422');
+        }
     }
 
+    //用户修改头像并上传OSS
+    public function editUserImg(Request $request)
+    {
+        $userId = $request->param('id');
+        $file = $request->file('file');
+
+        if($file) {
+            // 获取上传的图片格式
+            $format = $file->getMime();
+            //设置图片格式
+            $format_array = ['image/jpg','image/jpeg','image/png'];
+            if(in_array($format,$format_array)){
+                //获取上传文件地址
+                $format_name = $file->getPathname();
+                //设置传入OSS上的文件地址
+                $userImgName = $file->getInode().$userId.time().'.png';
+
+                //上传OSS
+                $data = AliOss::getInstance()->uploadFile('user_img/'.$userImgName,$format_name);
+                //是否上传成功上传成功则进入
+                if($data['info']['http_code'] == 200){
+                    //查询用户信息
+                    $tableUser = tableUser::find($userId);
+                    //修改用户头像
+                    $user = $tableUser->allowField(['user_img'])->save(['user_img'=>$data['info']['url']]);
+                    //设置返回信息
+                    $data = ['user_img' =>$data['info']['url']];
+                    if($user){
+                        return reponseMsg('修改头像成功','200',$data);
+                    }else{
+                        return reponseMsg('修改头像失败','422');
+                    }
+                }
+            }else{
+                return reponseMsg('上传的图片格式正确','422');
+            }
+        }else{
+            return reponseMsg('请上传图片','422');
+        }
+    }
+
+    //用户开启直播
+    public function switchLive(Request $request)
+    {
+        //获取那个用户开启直播
+        $userId = $request->param('id');
+        $user = tableUser::find($userId);
+        //判断用户是否申请为主播
+        if($user['is_live'] == 1){
+            //查询主播直播间
+            $tableLive = new tableLive;
+            return $tableLive->switchLive($userId);
+        }else{
+            return reponseMsg('您还未成为主播请成为主播后在进行开播','422');
+        }
+    }
+
+    //用户是否开播
+    public function isLive(Request $request){
+        $userId = $request->param('id');
+        $user = tableUser::find($userId);
+        //判断用户是否申请为主播
+        if($user['is_live'] == 1){
+            //查询主播直播间
+            $tableLive = new tableLive();
+            return $tableLive->isLive($userId);
+        }else{
+            return reponseMsg('您还未成为主播请成为主播后在进行开播','200');
+        }
+    }
 }
